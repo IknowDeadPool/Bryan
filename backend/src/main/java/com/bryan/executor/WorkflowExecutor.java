@@ -4,6 +4,7 @@ import com.bryan.executor.model.*;
 import com.bryan.tools.AutomationTool;
 import com.bryan.tools.ToolContext;
 import com.bryan.tools.ToolRegistry;
+import com.bryan.tools.ToolResult;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -19,6 +20,7 @@ public class WorkflowExecutor {
 
     public List<StepLog> execute(List<WorkflowStep> steps) {
         List<StepLog> logs = new ArrayList<>();
+        Map<String, Object> state = new HashMap<>();
 
         for (int i = 0; i < steps.size(); i++) {
             WorkflowStep step = steps.get(i);
@@ -38,17 +40,24 @@ public class WorkflowExecutor {
             try {
                 AutomationTool tool = toolRegistry.get(toolName);
                 Map<String, Object> inputs = step.getInputs() == null ? Map.of() : step.getInputs();
-                ToolContext ctx = new ToolContext(inputs);
 
-                var result = tool.execute(ctx);
+                ToolContext ctx = new ToolContext(inputs, state);
+                ToolResult result = tool.execute(ctx);
 
                 if (result.isSuccess()) {
-                    logs.add(new StepLog(stepId, toolName, ExecutionStatus.SUCCESS, "OK"));
+                    // Store outputs in shared state (both generic and tool-specific)
+                    state.put("lastOutput", result.getData());
+                    state.put("lastTool", toolName);
+                    state.put(toolName + ".output", result.getData());
+
+                    logs.add(new StepLog(stepId, toolName, ExecutionStatus.SUCCESS,
+                            "OK (state updated: lastTool=" + toolName + ")"));
                 } else {
                     logs.add(new StepLog(stepId, toolName, ExecutionStatus.FAILED,
                             result.getMessage() == null ? "Tool failed" : result.getMessage()));
                     break;
                 }
+
             } catch (Exception e) {
                 logs.add(new StepLog(stepId, toolName, ExecutionStatus.FAILED, "Exception: " + e.getMessage()));
                 break;
@@ -57,4 +66,5 @@ public class WorkflowExecutor {
 
         return logs;
     }
+
 }
