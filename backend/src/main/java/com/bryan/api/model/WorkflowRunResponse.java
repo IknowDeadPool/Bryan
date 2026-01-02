@@ -2,6 +2,7 @@ package com.bryan.api.model;
 
 import com.bryan.executor.model.StepLog;
 import com.bryan.executor.model.WorkflowStep;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,7 @@ import java.util.Map;
 public class WorkflowRunResponse {
     private String goal;
     private List<WorkflowStep> plannedSteps;
+
     private List<StepLog> logs;
     private Map<String, Object> state;
     private Object finalOutput;
@@ -19,6 +21,7 @@ public class WorkflowRunResponse {
                                Map<String, Object> state,
                                Object finalOutput) {
         this.goal = goal;
+
         this.plannedSteps = plannedSteps;
         this.logs = logs;
         this.state = state;
