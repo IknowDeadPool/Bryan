@@ -17,4 +17,8 @@ public class ToolRegistry {
     public AutomationTool get(String name) {
         return tools.get(name);
     }
+
+    public Map<String, AutomationTool> all() {
+        return Map.copyOf(tools);
+    }
 }

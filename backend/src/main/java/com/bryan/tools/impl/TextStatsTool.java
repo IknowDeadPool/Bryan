@@ -37,4 +37,16 @@ public class TextStatsTool implements AutomationTool {
 
         return ToolResult.success(stats);
     }
+
+    @Override
+    public String getDescription() {
+        return "Computes basic stats (chars, words, lines) from input text or previous step output.";
+    }
+
+    @Override
+    public java.util.List<ToolInputSpec> getInputSpec() {
+        return java.util.List.of(
+                new ToolInputSpec("text", false, "string", "Optional text input. If omitted, uses lastOutput from workflow state.")
+        );
+    }
 }

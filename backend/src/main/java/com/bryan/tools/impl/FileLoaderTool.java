@@ -77,4 +77,17 @@ public class FileLoaderTool implements AutomationTool {
             );
         }
     }
+
+    @Override
+    public String getDescription() {
+        return "Loads a text file from disk and outputs its contents as a string. BOM/encoding-aware.";
+    }
+
+    @Override
+    public java.util.List<ToolInputSpec> getInputSpec() {
+        return java.util.List.of(
+                new ToolInputSpec("path", true, "string", "Path to the file (relative to working dir or absolute).")
+        );
+    }
+
 }
