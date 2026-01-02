@@ -18,9 +18,10 @@ public class WorkflowExecutor {
         this.toolRegistry = toolRegistry;
     }
 
-    public List<StepLog> execute(List<WorkflowStep> steps) {
+    public WorkflowRunResult execute(List<WorkflowStep> steps) {
         List<StepLog> logs = new ArrayList<>();
         Map<String, Object> state = new HashMap<>();
+        Object finalOutput = null;
 
         for (int i = 0; i < steps.size(); i++) {
             WorkflowStep step = steps.get(i);
@@ -45,13 +46,12 @@ public class WorkflowExecutor {
                 ToolResult result = tool.execute(ctx);
 
                 if (result.isSuccess()) {
-                    // Store outputs in shared state (both generic and tool-specific)
+                    finalOutput = result.getData();
                     state.put("lastOutput", result.getData());
                     state.put("lastTool", toolName);
                     state.put(toolName + ".output", result.getData());
 
-                    logs.add(new StepLog(stepId, toolName, ExecutionStatus.SUCCESS,
-                            "OK (state updated: lastTool=" + toolName + ")"));
+                    logs.add(new StepLog(stepId, toolName, ExecutionStatus.SUCCESS, "OK"));
                 } else {
                     logs.add(new StepLog(stepId, toolName, ExecutionStatus.FAILED,
                             result.getMessage() == null ? "Tool failed" : result.getMessage()));
@@ -64,7 +64,8 @@ public class WorkflowExecutor {
             }
         }
 
-        return logs;
+        return new WorkflowRunResult(logs, state, finalOutput);
     }
+
 
 }

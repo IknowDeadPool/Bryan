@@ -6,7 +6,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
 public class FileLoaderTool implements AutomationTool {
 
@@ -34,25 +33,40 @@ public class FileLoaderTool implements AutomationTool {
                 return ToolResult.failure("File not found at: " + p.toAbsolutePath());
             }
 
-            // Try common charsets (UTF-8 first, then Windows-friendly fallbacks)
-            List<Charset> charsets = List.of(
-                    StandardCharsets.UTF_8,
-                    Charset.forName("windows-1252"),
-                    StandardCharsets.ISO_8859_1
-            );
+            byte[] bytes = Files.readAllBytes(p);
+            if (bytes.length == 0) return ToolResult.success("");
 
-            Exception last = null;
-            for (Charset cs : charsets) {
-                try {
-                    String content = Files.readString(p, cs);
-                    return ToolResult.success(content);
-                } catch (Exception e) {
-                    last = e;
+            // Detect BOM (Byte Order Mark)
+            // UTF-16 LE BOM: FF FE
+            // UTF-16 BE BOM: FE FF
+            // UTF-8 BOM: EF BB BF
+            Charset cs = StandardCharsets.UTF_8;
+            int offset = 0;
+
+            if (bytes.length >= 2) {
+                int b0 = bytes[0] & 0xFF;
+                int b1 = bytes[1] & 0xFF;
+
+                if (b0 == 0xFF && b1 == 0xFE) {          // UTF-16 LE
+                    cs = StandardCharsets.UTF_16LE;
+                    offset = 2;
+                } else if (b0 == 0xFE && b1 == 0xFF) {   // UTF-16 BE
+                    cs = StandardCharsets.UTF_16BE;
+                    offset = 2;
+                }
+            }
+            if (bytes.length >= 3) {
+                int b0 = bytes[0] & 0xFF;
+                int b1 = bytes[1] & 0xFF;
+                int b2 = bytes[2] & 0xFF;
+                if (b0 == 0xEF && b1 == 0xBB && b2 == 0xBF) { // UTF-8 BOM
+                    cs = StandardCharsets.UTF_8;
+                    offset = 3;
                 }
             }
 
-            return ToolResult.failure("Failed to read file with supported encodings. Last error: " +
-                    (last == null ? "unknown" : last.getClass().getName() + " " + last.getMessage()));
+            String content = new String(bytes, offset, bytes.length - offset, cs);
+            return ToolResult.success(content);
 
         } catch (Exception e) {
             return ToolResult.failure(

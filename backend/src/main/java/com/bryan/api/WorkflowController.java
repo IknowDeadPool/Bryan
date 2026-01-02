@@ -1,7 +1,8 @@
 package com.bryan.api;
 
+import com.bryan.api.model.WorkflowExecutionResponse;
 import com.bryan.executor.WorkflowExecutor;
-import com.bryan.executor.model.StepLog;
+import com.bryan.executor.model.WorkflowRunResult;
 import com.bryan.executor.model.WorkflowStep;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,7 +19,8 @@ public class WorkflowController {
     }
 
     @PostMapping("/execute")
-    public List<StepLog> execute(@RequestBody List<WorkflowStep> steps) {
-        return workflowExecutor.execute(steps);
+    public WorkflowExecutionResponse execute(@RequestBody List<WorkflowStep> steps) {
+        WorkflowRunResult result = workflowExecutor.execute(steps);
+        return new WorkflowExecutionResponse(result.getLogs(), result.getState(), result.getFinalOutput());
     }
 }
