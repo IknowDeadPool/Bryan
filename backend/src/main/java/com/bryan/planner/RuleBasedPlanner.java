@@ -66,29 +66,71 @@ public class RuleBasedPlanner {
         this.toolRegistry = toolRegistry;
     }
 
+//    public List<WorkflowStep> plan(String goal) {
+//        if (goal == null) goal = "";
+//        String g = goal.toLowerCase(Locale.ROOT);
+//
+//        // Pull available tools dynamically
+//        Collection<AutomationTool> tools = toolRegistry.all().values();
+//
+//        List<WorkflowStep> steps = new ArrayList<>();
+//
+//        // 1) If the goal mentions a file, choose a tool that expects "path"
+//        String path = extractFilePath(goal);
+//        if (path != null) {
+//            AutomationTool fileTool = findToolRequiringInput(tools, "path");
+//            if (fileTool != null) {
+//                steps.add(new WorkflowStep(fileTool.getName(), Map.of("path", path)));
+//            }
+//        }
+//        String savePath = extractSavePath(goal);
+//        if (savePath != null && containsAny(g, "save", "write", "export")) {
+//            steps.add(new WorkflowStep("SaveToFile", Map.of("path", savePath)));
+//        }
+//
+//        // 2) If the goal mentions stats/count/words/lines, choose a "stats-like" tool
+//        if (containsAny(g, "stats", "count", "words", "lines", "characters", "chars")) {
+//            AutomationTool statsTool = findToolByKeyword(tools, List.of("stats", "words", "lines", "chars", "character"));
+//            if (statsTool != null) {
+//                steps.add(new WorkflowStep(statsTool.getName(), Map.of()));
+//            }
+//        }
+//
+//        return steps;
+//    }
+
     public List<WorkflowStep> plan(String goal) {
         if (goal == null) goal = "";
         String g = goal.toLowerCase(Locale.ROOT);
 
-        // Pull available tools dynamically
         Collection<AutomationTool> tools = toolRegistry.all().values();
-
         List<WorkflowStep> steps = new ArrayList<>();
 
-        // 1) If the goal mentions a file, choose a tool that expects "path"
-        String path = extractFilePath(goal);
-        if (path != null) {
-            AutomationTool fileTool = findToolRequiringInput(tools, "path");
-            if (fileTool != null) {
-                steps.add(new WorkflowStep(fileTool.getName(), Map.of("path", path)));
+        // Extract possible file tokens
+        String inputPath = extractFirstFilePath(goal);         // e.g. sample.txt
+        String savePath = extractSaveTargetPath(goal);         // e.g. stats.json (after "to"/"into"/"as")
+
+        // 1) LOAD step (only if goal implies reading/loading)
+        if (inputPath != null && containsAny(g, "read", "load", "open")) {
+            AutomationTool loader = findToolByKeyword(tools, List.of("load", "read", "file", "bom"));
+            if (loader != null) {
+                steps.add(new WorkflowStep(loader.getName(), Map.of("path", inputPath)));
             }
         }
 
-        // 2) If the goal mentions stats/count/words/lines, choose a "stats-like" tool
-        if (containsAny(g, "stats", "count", "words", "lines", "characters", "chars")) {
+        // 2) STATS step
+        if (containsAny(g, "stats", "count", "words", "lines", "chars", "characters")) {
             AutomationTool statsTool = findToolByKeyword(tools, List.of("stats", "words", "lines", "chars", "character"));
             if (statsTool != null) {
                 steps.add(new WorkflowStep(statsTool.getName(), Map.of()));
+            }
+        }
+
+        // 3) SAVE step (always last)
+        if (savePath != null && containsAny(g, "save", "write", "export")) {
+            AutomationTool saver = findToolByKeyword(tools, List.of("save", "write", "export"));
+            if (saver != null) {
+                steps.add(new WorkflowStep(saver.getName(), Map.of("path", savePath)));
             }
         }
 
@@ -106,15 +148,15 @@ public class RuleBasedPlanner {
         return null;
     }
 
-    private AutomationTool findToolByKeyword(Collection<AutomationTool> tools, List<String> keywords) {
-        for (AutomationTool t : tools) {
-            String hay = (t.getName() + " " + t.getDescription()).toLowerCase(Locale.ROOT);
-            for (String kw : keywords) {
-                if (hay.contains(kw)) return t;
-            }
-        }
-        return null;
-    }
+//    private AutomationTool findToolByKeyword(Collection<AutomationTool> tools, List<String> keywords) {
+//        for (AutomationTool t : tools) {
+//            String hay = (t.getName() + " " + t.getDescription()).toLowerCase(Locale.ROOT);
+//            for (String kw : keywords) {
+//                if (hay.contains(kw)) return t;
+//            }
+//        }
+//        return null;
+//    }
 
     private boolean containsAny(String text, String... kws) {
         for (String kw : kws) if (text.contains(kw)) return true;
@@ -131,6 +173,76 @@ public class RuleBasedPlanner {
             }
         }
         return null;
+    }
+    private String extractSavePath(String goal) {
+        if (goal == null) return null;
+
+        // looks for the last token that looks like a filename; use it as output path
+        String[] tokens = goal.split("[\\s,]+");
+        String candidate = null;
+        for (String t : tokens) {
+            String token = t.trim().replace("\"", "").replace("'", "");
+            if (token.matches(".*\\.(txt|csv|json|md)$")) {
+                candidate = token;
+            }
+        }
+        return candidate;
+    }
+
+
+    private String extractFirstFilePath(String goal) {
+        if (goal == null) return null;
+        String[] tokens = goal.split("[\\s,]+");
+        for (String t : tokens) {
+            String token = t.trim().replace("\"", "").replace("'", "");
+            if (token.matches(".*\\.(txt|csv|json|md)$")) {
+                return token;
+            }
+        }
+        return null;
+    }
+
+    private String extractSaveTargetPath(String goal) {
+        if (goal == null) return null;
+        String[] tokens = goal.split("[\\s,]+");
+
+        // Look for: "save to X", "save into X", "export to X", "write to X", "save as X"
+        for (int i = 0; i < tokens.length - 1; i++) {
+            String a = clean(tokens[i]).toLowerCase(Locale.ROOT);
+            String b = clean(tokens[i + 1]);
+
+            if ((a.equals("to") || a.equals("into") || a.equals("as")) && b.matches(".*\\.(txt|csv|json|md)$")) {
+                return b;
+            }
+        }
+        return null;
+    }
+
+    private String clean(String s) {
+        return s == null ? "" : s.trim().replace("\"", "").replace("'", "");
+    }
+
+//    private boolean containsAny(String text, String... kws) {
+//        for (String kw : kws) if (text.contains(kw)) return true;
+//        return false;
+//    }
+
+    private AutomationTool findToolByKeyword(Collection<AutomationTool> tools, List<String> keywords) {
+        AutomationTool best = null;
+        int bestScore = -1;
+
+        for (AutomationTool t : tools) {
+            String hay = (t.getName() + " " + t.getDescription()).toLowerCase(Locale.ROOT);
+            int score = 0;
+            for (String kw : keywords) {
+                if (hay.contains(kw)) score++;
+            }
+            if (score > bestScore) {
+                bestScore = score;
+                best = t;
+            }
+        }
+        return bestScore <= 0 ? null : best;
     }
 }
 

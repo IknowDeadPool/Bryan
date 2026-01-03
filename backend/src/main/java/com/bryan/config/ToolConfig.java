@@ -5,6 +5,7 @@ import com.bryan.tools.impl.FileLoaderTool;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import com.bryan.tools.impl.TextStatsTool;
+import com.bryan.tools.impl.SaveToFileTool;
 @Configuration
 public class ToolConfig {
 
@@ -13,6 +14,7 @@ public class ToolConfig {
         ToolRegistry registry = new ToolRegistry();
         registry.register(new FileLoaderTool());
         registry.register(new TextStatsTool());
+        registry.register(new SaveToFileTool());
         return registry;
     }
 }
