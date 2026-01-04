@@ -43,7 +43,14 @@ public class SaveToFileTool implements AutomationTool {
                 return ToolResult.failure("Nothing to save: provide 'text' or run after a tool that produces output.");
             }
 
-            String content = textObj.toString();
+            String content;
+            if (textObj instanceof String) {
+                content = (String) textObj;
+            } else {
+                // If it's a Map/List/etc, write pretty JSON
+                var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                content = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(textObj);
+            }
 
             Path p = Path.of(outPath);
             if (!p.isAbsolute()) {
