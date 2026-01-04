@@ -75,8 +75,34 @@ Available via:
 POST /api/workflows/run
 
 
+
 Request:
 ```json
 {
   "goal": "Read sample.txt, show stats, and save to stats.json"
 }
+```
+
+## Future Enhancements
+
+- LLM-based planner (local AI / Ollama)
+
+- Parallel workflow execution
+
+- Tool dependency graphs
+
+- Persistent workflow storage
+
+- Web UI for visual workflows
+
+## Tech Stack
+
+- Java 24
+
+- Spring Boot
+
+- Maven
+
+- Jackson (JSON serialization)
+
+- REST APIs
